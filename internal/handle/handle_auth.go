@@ -48,16 +48,13 @@ func (*UserAuth) Register(c *gin.Context) {
 	if err := c.ShouldBindJSON(&registerRequest); err != nil {
 		ReturnError(c, g.ErrRequest, err)
 		fmt.Println(err)
-		return
 	}
 	db := GetDB(c)
 	if len(registerRequest.Password) < 6 || len(registerRequest.Password) > 15 {
 		ReturnError(c, g.ErrRequest, "密码需大于六位且小于16位~~")
-		return
 	}
 	if !isValidEmail(registerRequest.Email) {
 		ReturnError(c, g.ErrRequest, "邮箱格式错误~~")
-		return
 	}
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(registerRequest.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -66,16 +63,13 @@ func (*UserAuth) Register(c *gin.Context) {
 	err = model.CreateUser(db, registerRequest.Email, registerRequest.Username, string(passwordHash))
 	if err != nil {
 		ReturnError(c, g.ErrDbOp, err)
-		return
 	}
 	ReturnSuccess(c, registerRequest)
-	return
 }
 func (*UserAuth) Login(c *gin.Context) {
 	var loginRequest LoginRequest
 	if err := c.ShouldBindJSON(&loginRequest); err != nil {
 		ReturnError(c, g.ErrRequest, err)
-		return
 	}
 	db := GetDB(c)
 	rdb := GetRDB(c)
@@ -83,28 +77,23 @@ func (*UserAuth) Login(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ReturnError(c, g.ErrRequest, nil)
-			return
 		}
 	}
 	// 检查密码是否正确
 	err = bcrypt.CompareHashAndPassword([]byte(userAuth.Password), []byte(loginRequest.Password))
 	if err != nil {
 		ReturnError(c, g.ErrRequest, "密码错误")
-		return
 	}
 	userInfo, err := model.GetUserInfoByUserInfoId(db, userAuth.UserInfoId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ReturnError(c, g.ErrUserNotExist, "不能通过UserInfoId在UserInfo表中找到")
-			return
 		}
 		ReturnError(c, g.ErrDbOp, err)
-		return
 	}
 	roleIds, err := model.GetRoleIdsByUserId(db, userAuth.ID)
 	if err != nil {
 		ReturnError(c, g.ErrDbOp, err)
-		return
 	}
 
 	session := sessions.Default(c)
@@ -122,6 +111,27 @@ func (*UserAuth) Login(c *gin.Context) {
 		Token:    token,
 	})
 }
+
+// 退出登录
 func (*UserAuth) Logout(c *gin.Context) {
 	c.Set(g.CTX_USER_AUTH, nil)
+
+	// 已经退出登录
+	auth, _ := GetCurrentUserAuth(c)
+	if auth == nil {
+		ReturnSuccess(c, "已经退出登录")
+		return
+	}
+
+	session := sessions.Default(c)
+	session.Delete(g.CTX_USER_AUTH)
+	session.Save()
+
+	//删除redis中的在线信息
+	rdb := GetRDB(c)
+	onlineKey := g.ONLINE_USER + strconv.Itoa(int(auth.ID))
+	rdb.Del(rctx, onlineKey)
+	ReturnSuccess(c, "该用户已经退出登录")
+}
+func (*UserAuth) SendCode(c *gin.Context) {
 }

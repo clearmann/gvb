@@ -6,7 +6,7 @@ import (
 )
 
 type UserAuth struct {
-	gorm.Model
+	Model
 	Username      string     `gorm:"unique;type:varchar(50)" json:"username"`
 	Password      string     `gorm:"type:varchar(100)" json:"password"`
 	Email         string     `json:"email" gorm:"type:varchar(30)"`
@@ -17,7 +17,7 @@ type UserAuth struct {
 	IsDisable     bool       `json:"is_disable"`
 	IsSuper       bool       `json:"is_super"` // 超级管理员只能后台设置
 
-	UserInfoId uint      `json:"user_info_id"`
+	UserInfoId int       `json:"user_info_id"`
 	UserInfo   *UserInfo `json:"info"`
 	Roles      []Role    `json:"roles" gorm:"many2many:user_auth_roles"`
 }
@@ -34,7 +34,7 @@ type Role struct {
 type Resource struct {
 	gorm.Model
 	Name      string `gorm:"unique;type:varchar(50)" json:"name"`
-	ParentId  uint   `json:"parent_id"`
+	ParentId  int    `json:"parent_id"`
 	Url       string `gorm:"type:varchar(255)" json:"url"`
 	Method    string `gorm:"type:varchar(10)" json:"request_method"`
 	Anonymous bool   `json:"is_anonymous"`
@@ -43,7 +43,7 @@ type Resource struct {
 }
 type Menu struct {
 	gorm.Model
-	ParentId     uint   `json:"parent_id"`
+	ParentId     int    `json:"parent_id"`
 	Name         string `gorm:"uniqueIndex:idx_name_and_path;type:varchar(20)" json:"name"` // 菜单名称
 	Path         string `gorm:"uniqueIndex:idx_name_and_path;type:varchar(50)" json:"path"` // 路由地址
 	Component    string `gorm:"type:varchar(50)" json:"component"`                          // 组件路径
@@ -59,21 +59,26 @@ type Menu struct {
 	Roles []Role `json:"roles" gorm:"many2many:role_menus"`
 }
 type RoleMenu struct {
-	RoleId uint `json:"-" gorm:"primaryKey;uniqueIndex:idx_role_menu"`
-	UserId uint `json:"-" gorm:"primaryKey;uniqueIndex:idx_role_menu"`
+	RoleId int `json:"-" gorm:"primaryKey;uniqueIndex:idx_role_menu"`
+	UserId int `json:"-" gorm:"primaryKey;uniqueIndex:idx_role_menu"`
 }
 type RoleResource struct {
-	RoleId     uint `json:"-" gorm:"primaryKey;uniqueIndex:idx_role_resource"`
-	ResourceId uint `json:"-" gorm:"primaryKey;uniqueIndex:idx_role_resource"`
+	RoleId     int `json:"-" gorm:"primaryKey;uniqueIndex:idx_role_resource"`
+	ResourceId int `json:"-" gorm:"primaryKey;uniqueIndex:idx_role_resource"`
 }
 type UserAuthRole struct {
-	UserAuthId uint `gorm:"primaryKey;uniqueIndex:idx_user_auth_role"`
-	RoleId     uint `gorm:"primaryKey;uniqueIndex:idx_user_auth_role"`
+	UserAuthId int `gorm:"primaryKey;uniqueIndex:idx_user_auth_role"`
+	RoleId     int `gorm:"primaryKey;uniqueIndex:idx_user_auth_role"`
 }
 
 func GetUserAuthInfoByName(db *gorm.DB, username string) (*UserAuth, error) {
 	var userAuth UserAuth
 	result := db.Where(&UserAuth{Username: username}).First(&userAuth)
+	return &userAuth, result.Error
+}
+func GetUserAuthById(db *gorm.DB, id int) (*UserAuth, error) {
+	var userAuth UserAuth
+	result := db.Where(&UserAuth{Model: Model{ID: id}}).First(&userAuth)
 	return &userAuth, result.Error
 }
 func CreateUser(db *gorm.DB, email string, username string, passwordHash string) error {
@@ -104,7 +109,7 @@ func CreateUser(db *gorm.DB, email string, username string, passwordHash string)
 	})
 	return result.Error
 }
-func GetRoleIdsByUserId(db *gorm.DB, userAuthId uint) (ids []uint, err error) {
+func GetRoleIdsByUserId(db *gorm.DB, userAuthId int) (ids []int, err error) {
 	result := db.Model(&UserAuthRole{UserAuthId: userAuthId}).Pluck("role_id", &ids)
 	return ids, result.Error
 }

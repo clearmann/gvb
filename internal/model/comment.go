@@ -13,7 +13,7 @@ const (
 如果评论类型是友链，不需要 topic_id
 */
 type Comment struct {
-	gorm.Model
+	Model
 	UserId      int    `json:"user_id"`       // 评论者
 	ReplyUserId int    `json:"reply_user_id"` // 被回复者
 	TopicId     int    `json:"topic_id"`      // 评论的文章
@@ -26,4 +26,12 @@ type Comment struct {
 	User      *UserAuth `gorm:"foreignKey:UserId" json:"user"`
 	ReplyUser *UserAuth `gorm:"foreignKey:ReplyUserId" json:"reply_user"`
 	Article   *Article  `gorm:"foreignKey:TopicId" json:"article"`
+}
+
+// 获取某篇文章的评论数
+func GetArticleCommentCount(db *gorm.DB, articleId int) (count int64, err error) {
+	result := db.Model(&Comment{}).
+		Where("topic_id = ? AND type = 1 AND is_review = 1", articleId).
+		Count(&count)
+	return count, result.Error
 }

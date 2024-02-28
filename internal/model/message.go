@@ -1,9 +1,7 @@
 package model
 
-import "gorm.io/gorm"
-
 type Message struct {
-	gorm.Model
+	Model
 	Nickname  string `gorm:"type:varchar(50);comment:昵称" json:"nickname"`
 	Avatar    string `gorm:"type:varchar(255);comment:头像地址" json:"avatar"`
 	Content   string `gorm:"type:varchar(255);comment:留言内容" json:"content"`

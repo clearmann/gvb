@@ -1,5 +1,9 @@
 package model
 
+import (
+	"gorm.io/gorm"
+)
+
 type FrontHomeVO struct {
 	ArticleCount  int64             `json:"article_count"`  // 文章数量
 	UserCount     int64             `json:"user_count"`     // 用户数量
@@ -9,4 +13,39 @@ type FrontHomeVO struct {
 	ViewCount     int64             `json:"view_count"`     // 访问量
 	Config        map[string]string `json:"blog_config"`    // 博客信息
 	// PageList      []Page            `json:"page_list"`      // 页面列表
+}
+
+// 从数据库中获取相关信息
+func GetFrontStatics(db *gorm.DB) (data *FrontHomeVO, err error) {
+	result := db.Model(&Article{}).Where("status = ? AND is_delete = ?", 1, 0).Count(&data.ArticleCount)
+	if result.Error != nil {
+		return data, result.Error
+	}
+
+	result = db.Model(&UserAuth{}).Count(&data.UserCount)
+	if result.Error != nil {
+		return data, result.Error
+	}
+
+	result = db.Model(&Message{}).Count(&data.MessageCount)
+	if result.Error != nil {
+		return data, result.Error
+	}
+
+	result = db.Model(&Category{}).Count(&data.CategoryCount)
+	if result.Error != nil {
+		return data, result.Error
+	}
+
+	result = db.Model(&Tag{}).Count(&data.TagCount)
+	if result.Error != nil {
+		return data, result.Error
+	}
+
+	data.Config, err = GetConfigMap(db)
+	if err != nil {
+		return data, err
+	}
+
+	return data, nil
 }

@@ -1,9 +1,7 @@
 package model
 
-import "gorm.io/gorm"
-
 type OperationLog struct {
-	gorm.Model
+	Model
 	OptModule string `gorm:"type:varchar(50);comment:操作模块" json:"opt_module"`
 	OptType   string `gorm:"type:varchar(50);comment:操作类型" json:"opt_type"`
 	OptMethod string `gorm:"type:varchar(100);comment:操作方法" json:"opt_method"`

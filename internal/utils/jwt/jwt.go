@@ -15,13 +15,13 @@ var (
 )
 
 type MyClaim struct {
-	UserId   uint   `json:"user_id"`
+	UserId   int    `json:"user_id"`
 	Username string `json:"username"`
-	RoleId   []uint `json:"role_id"`
+	RoleId   []int  `json:"role_id"`
 	jwt.RegisteredClaims
 }
 
-func GenToken(userId uint, roleId []uint) (string, error) {
+func GenToken(userId int, roleId []int) (string, error) {
 	secret := []byte(g.Conf.JWT.Secret)
 	expireHour := g.Conf.JWT.Expire
 	claim := &MyClaim{
