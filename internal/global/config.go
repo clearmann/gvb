@@ -7,10 +7,10 @@ import (
 
 type Config struct {
 	Server struct {
-		Mode          string // debug | release
+		Mode          string `yaml:"mode"`
 		Port          string
 		DbType        string // mysql | sqlite
-		DbAutoMigrate bool   // 是否自动迁移数据库表结构
+		DbAutoMigrate bool
 		DbLogMode     string // silent | error | warn | info
 		StartTime     string
 		MachineID     int64
@@ -42,9 +42,23 @@ type Config struct {
 		MaxAge int
 	}
 	JWT struct {
-		Secret string
-		Expire int
-		Issuer string
+		Secret string `json:"secret"` // 密钥
+		Expire int    `json:"expire"` // 过期时间，单位为 h
+		Issuer string `json:"issuer"` // jwt 的发布者
+	}
+	QiNiu struct {
+		Enable    bool   `yaml:"enable"` // 是否用七牛云存储
+		AccessKey string `json:"access_key"`
+		SecretKey string `json:"secret_key"`
+		Bucket    string `json:"bucket"` //存储桶的名字
+		CDN       string `json:"cdn"`    //访问图片的地址的前缀
+		Zone      string `json:"zone"`   //存储的地区
+		Size      string `json:"size"`   //存储的大小限制，单位是MB
+	}
+	QQ struct {
+		AppID    int    `json:"app_id"`
+		Key      string `json:"key"`
+		Redirect string `json:"redirect"` // 登录之后的回调地址
 	}
 }
 

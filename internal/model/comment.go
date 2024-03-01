@@ -35,3 +35,37 @@ func GetArticleCommentCount(db *gorm.DB, articleId int) (count int64, err error)
 		Count(&count)
 	return count, result.Error
 }
+
+// 新增评论
+func AddComment(db *gorm.DB, userId, typ, topicId int, content string, isReview bool) (*Comment, error) {
+	comment := Comment{
+		UserId:   userId,
+		TopicId:  topicId,
+		Content:  content,
+		Type:     typ,
+		IsReview: isReview,
+	}
+	result := db.Create(&comment)
+	return &comment, result.Error
+}
+
+// 回复评论
+func ReplyComment(db *gorm.DB, userId, replyUserId, parentId int, content string, isReview bool) (*Comment, error) {
+	var parent Comment
+	result := db.First(&parent, parentId)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	comment := Comment{
+		UserId:      userId,
+		Content:     content,
+		ReplyUserId: replyUserId,
+		ParentId:    parentId,
+		IsReview:    isReview,
+		TopicId:     parent.TopicId, // 主题和父评论一样
+		Type:        parent.Type,    // 类型和父评论一样
+	}
+	result = db.Create(&comment)
+	return &comment, result.Error
+}

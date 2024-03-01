@@ -113,3 +113,10 @@ func GetRoleIdsByUserId(db *gorm.DB, userAuthId int) (ids []int, err error) {
 	result := db.Model(&UserAuthRole{UserAuthId: userAuthId}).Pluck("role_id", &ids)
 	return ids, result.Error
 }
+func GetUserAuthInfoById(db *gorm.DB, id int) (*UserAuth, error) {
+	var userAuth = UserAuth{Model: Model{ID: id}}
+	result := db.Model(&userAuth).
+		Preload("Roles").Preload("UserInfo").
+		First(&userAuth)
+	return &userAuth, result.Error
+}

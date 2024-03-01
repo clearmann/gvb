@@ -157,8 +157,7 @@ func (*Front) SearchArticle(c *gin.Context) {
 	}
 	for _, article := range articleList {
 		// 高亮标题中的关键字
-		title := strings.ReplaceAll(article.Title, keyword,
-			"<span style='color:#f47466'>"+keyword+"</span>")
+		title := strings.ReplaceAll(article.Title, keyword, "<span style='color:#f47466'>"+keyword+"</span>")
 
 		content := article.Content
 		// 关键字在内容中的起始位置
@@ -183,8 +182,7 @@ func (*Front) SearchArticle(c *gin.Context) {
 			// afterText := string([]rune(content)[keywordStartIndex:afterIndex])
 			afterText := substring(content, keywordStartIndex, afterIndex)
 			// 高亮内容中的关键字
-			content = strings.ReplaceAll(preText+afterText, keyword,
-				"<span style='color:#f47466'>"+keyword+"</span>")
+			content = strings.ReplaceAll(preText+afterText, keyword, "<span style='color:#f47466'>"+keyword+"</span>")
 		}
 
 		result = append(result, ArticleSearchVO{
@@ -236,4 +234,140 @@ func substring(source string, start int, end int) string {
 func unicodeLen(str string) int {
 	var r = []rune(str)
 	return len(r)
+}
+
+// 查询分类列表
+func (*Front) GetCategoryList(c *gin.Context) {
+	db := GetDB(c)
+	//rdb := GetRDB(c)
+
+	list, _, err := model.GetCategoryList(db, 1, 100, "")
+	if err != nil {
+		ReturnError(c, g.ErrDbOp, nil)
+	}
+	ReturnSuccess(c, list)
+}
+
+// 查询标签列表
+func (*Front) GetTagList(c *gin.Context) {
+	db := GetDB(c)
+	list, _, err := model.GetTagList(db, 1, 1000, "")
+	if err != nil {
+		ReturnError(c, g.ErrDbOp, err)
+		return
+	}
+	ReturnSuccess(c, list)
+}
+
+// 点赞文章
+// 如果该用户对该文章已经点过赞，则只能取消点赞  反之只能点赞
+func (*Front) LikeArticle(c *gin.Context) {
+	auth, _ := GetCurrentUserAuth(c)
+
+	articleId, err := strconv.Atoi(c.Param("article_id"))
+	if err != nil {
+		ReturnError(c, g.ErrRequest, err)
+		return
+	}
+
+	rdb := GetRDB(c)
+
+	// 记录某个用户已经对某个文章点过赞
+	articleLikeUserKey := g.ARTICLE_USER_LIKE_SET + strconv.Itoa(auth.ID)
+	// 该文章已经被记录过, 再点赞就是取消点赞
+	if rdb.SIsMember(rctx, articleLikeUserKey, articleId).Val() {
+		rdb.SRem(rctx, articleLikeUserKey, articleId)
+		rdb.HIncrBy(rctx, g.ARTICLE_LIKE_COUNT, strconv.Itoa(articleId), -1)
+	} else { // 未被记录过, 则是增加点赞
+		rdb.SAdd(rctx, articleLikeUserKey, articleId)
+		rdb.HIncrBy(rctx, g.ARTICLE_LIKE_COUNT, strconv.Itoa(articleId), 1)
+	}
+	ReturnSuccess(c, nil)
+}
+
+// 只能新增不能编辑
+type FAddMessageReq struct {
+	Nickname string `json:"nickname" binding:"required"`
+	Avatar   string `json:"avatar"`
+	Content  string `json:"content" binding:"required"`
+	Speed    int    `json:"speed"`
+}
+
+func (*Front) SaveMessage(c *gin.Context) {
+	var req FAddMessageReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ReturnError(c, g.ErrRequest, err)
+		return
+	}
+
+	auth, _ := GetCurrentUserAuth(c)
+	db := GetDB(c)
+	isReview := model.GetConfigBool(db, g.CONFIG_IS_COMMENT_REVIEW)
+
+	info := auth.UserInfo
+	message, err := model.SaveMessage(db, info.Nickname, info.Nickname, req.Content, req.Speed, isReview)
+	if err != nil {
+		ReturnError(c, g.ErrDbOp, err)
+	}
+
+	ReturnSuccess(c, message)
+}
+
+// 保存评论 （只能新增，但是不能够修改）
+type FAddCommentReq struct {
+	ReplyUserId int    `json:"reply_user_id" form:"reply_user_id"`
+	TopicId     int    `json:"topic_id" form:"topic_id"`
+	Content     string `json:"content" form:"content"`
+	ParentId    int    `json:"parent_id" form:"parent_id"`
+	Type        int    `json:"type" form:"type" validate:"required,min=1,max=3" label:"评论类型"`
+}
+
+func (*Front) SaveComment(c *gin.Context) {
+	var req FAddCommentReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ReturnError(c, g.ErrRequest, err)
+	}
+
+	auth, _ := GetCurrentUserAuth(c)
+	db := GetDB(c)
+	isReview := model.GetConfigBool(db, g.CONFIG_IS_COMMENT_REVIEW)
+
+	var comment *model.Comment
+	var err error
+
+	if req.ReplyUserId == 0 {
+		comment, err = model.AddComment(db, auth.ID, req.Type, req.TopicId, req.Content, isReview)
+	} else {
+		comment, err = model.ReplyComment(db, auth.ID, req.ReplyUserId, req.ParentId, req.Content, isReview)
+	}
+	if err != nil {
+		ReturnError(c, g.ErrDbOp, err)
+	}
+
+	ReturnSuccess(c, comment)
+}
+
+// 点赞评论
+func (*Front) LikeComment(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("comment_id"))
+	if err != nil {
+		ReturnError(c, g.ErrRequest, err)
+		return
+	}
+
+	rdb := GetRDB(c)
+	auth, _ := GetCurrentUserAuth(c)
+
+	// 记录某个用户已经对某个评论点过赞
+	commentLikeUserKey := g.COMMENT_USER_LIKE_SET + strconv.Itoa(auth.ID)
+	// 该评论已经被记录过, 再点赞就是取消点赞
+	if rdb.SIsMember(rctx, commentLikeUserKey, id).Val() {
+		rdb.SRem(rctx, commentLikeUserKey, id)
+		rdb.HIncrBy(rctx, g.COMMENT_LIKE_COUNT, strconv.Itoa(id), -1)
+	} else { // 未被记录过, 则是增加点赞
+		rdb.SAdd(rctx, commentLikeUserKey, id)
+		rdb.HIncrBy(rctx, g.COMMENT_LIKE_COUNT, strconv.Itoa(id), 1)
+	}
+
+	ReturnSuccess(c, nil)
 }

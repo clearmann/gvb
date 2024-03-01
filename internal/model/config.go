@@ -29,3 +29,11 @@ func GetConfigMap(db *gorm.DB) (map[string]string, error) {
 	}
 	return m, nil
 }
+func GetConfigBool(db *gorm.DB, key string) bool {
+	var config Config
+	result := db.Where("key", key).First(&config)
+	if result.Error != nil {
+		return false
+	}
+	return config.Value == "true"
+}

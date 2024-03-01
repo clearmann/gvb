@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"github.com/gin-gonic/gin"
-	"gvb/internal"
+	ginblog "gvb/internal"
 	g "gvb/internal/global"
 	"gvb/internal/middleware"
 	sonwflake "gvb/internal/utils/snowflake"
@@ -48,13 +48,13 @@ func Run(r *gin.Engine, serverName string, addr string) {
 func main() {
 	r := gin.Default()
 	conf := g.ReadConfig()
-	internal.InitLogger(conf)
-	db := internal.InitDatabase(conf)
-	rdb := internal.InitRedis(conf)
+	ginblog.InitLogger(conf)
+	db := ginblog.InitDatabase(conf)
+	rdb := ginblog.InitRedis(conf)
 	r.Use(middleware.CORS())
 	r.Use(middleware.WithGormDB(db), middleware.WithRedisDB(rdb))
 	r.Use(middleware.WithCookieStore(conf.Session.Name, conf.Session.Salt))
 	sonwflake.Init(conf.Server.StartTime, conf.Server.MachineID)
-	internal.RegisterHandlers(r)
+	ginblog.RegisterHandlers(r)
 	Run(r, "gvb", conf.Server.Port)
 }

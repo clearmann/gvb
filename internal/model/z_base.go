@@ -33,8 +33,17 @@ func MakeMigrate(db *gorm.DB) error {
 		//&RoleMenu{},     // 角色-菜单 关联
 		//&RoleResource{}, // 角色资源关联
 		//&UserAuthRole{}, // 用户-角色 关联
-		&Article{}, //文章
-		&Tag{},     //标签
+		&Article{},      // 文章
+		&Tag{},          // 标签
+		&Resource{},     // 资源
+		&Category{},     // 分类
+		&Comment{},      // 评论
+		&Config{},       // 配置
+		&FriendLink{},   // 友链
+		&Message{},      // 消息
+		&OperationLog{}, // 操作日志
+		&Page{},
+		&Tag{},
 	)
 	return err
 }
